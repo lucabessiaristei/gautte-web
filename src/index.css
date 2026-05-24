@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@tailwind base;
+
+@layer base {
+  h1 {
+    @apply text-2xl;
+  }
+  h2 {
+    @apply text-xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+  a {
+    @apply text-blue-600 underline;
+  }
+}
+
+@tailwind components;
+
+@tailwind utilities;
+
+
+.neumorphic {
+  background: #E5E5E5;
+  border-radius: 20px;
+  box-shadow: 
+    /* outer light - top left */
+    -12px -12px 18px rgba(255, 255, 255, 0.64),
+    /* outer dark - bottom right */
+    12px 12px 18px rgba(13, 39, 80, 0.20),
+    /* inner light - top left */
+    inset -12px -12px 18px rgba(255, 255, 255, 0.64),
+    /* inner dark - bottom right */
+    inset 12px 12px 18px rgba(13, 39, 80, 0.20);
+}
