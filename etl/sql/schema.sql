@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict UTngiNR3Thuqf60axG9gEpG59BwVYUQ3SNvABGeMCNr6jxcNKq1vHi0WeN9K87K
+\restrict kgN5AbKDR7CJTuV5JO7E91yZ4hYiBKwK8DcUwuql2bMMqIodDLt6Nbs64fWtcHy
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -34,71 +34,104 @@ COMMENT ON SCHEMA public IS 'standard public schema';
 
 
 --
+-- Name: active_service_ids(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.active_service_ids(p_date text, p_day_of_week text) RETURNS TABLE(service_id text)
+    LANGUAGE sql STABLE
+    AS $$
+  select cd.service_id
+  from calendar_dates cd
+  where cd.date = p_date and cd.exception_type = '1'
+  union
+  select c.service_id
+  from calendar c
+  where p_date between c.start_date and c.end_date
+    and (case p_day_of_week
+           when 'monday' then c.monday
+           when 'tuesday' then c.tuesday
+           when 'wednesday' then c.wednesday
+           when 'thursday' then c.thursday
+           when 'friday' then c.friday
+           when 'saturday' then c.saturday
+           when 'sunday' then c.sunday
+         end) = '1'
+    and not exists (
+      select 1 from calendar_dates cd
+      where cd.service_id = c.service_id
+        and cd.date = p_date
+        and cd.exception_type = '2'
+    );
+$$;
+
+
+--
 -- Name: get_departures(text, integer, integer, text, text, text, text, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.get_departures(p_stop_id text, p_now_seconds integer, p_lookahead_seconds integer, p_now_date text, p_yesterday_date text, p_day_of_week text, p_yesterday_day_of_week text, p_max_per_line integer DEFAULT 4) RETURNS TABLE(arrival_time text, stop_sequence integer, trip_id text, trip_headsign text, route_short_name text, agency_id text, route_type integer)
-    LANGUAGE plpgsql
+    LANGUAGE sql STABLE
     AS $$
-begin
-    return query
-    
-    with valid_departures as (
-        select
-            st.arrival_time,
-            st.stop_sequence,
-            t.trip_id,
-            t.trip_headsign,
-            r.route_short_name,
-            r.agency_id,
-            r.route_type::int,
-            case
-                when st.arrival_seconds >= (p_now_seconds + 86400) then st.arrival_seconds - 86400
-                else st.arrival_seconds
-            end as sort_time
-        from stop_times st
-        join trips t      on st.trip_id   = t.trip_id
-        join routes r     on t.route_id   = r.route_id
-        join calendar c   on t.service_id = c.service_id
-        where
-            st.stop_id = p_stop_id
-            and st.arrival_time is not null
-            and r.route_short_name is not null
-            and (
-                (
-                    st.arrival_seconds between p_now_seconds and (p_now_seconds + p_lookahead_seconds)
-                    and p_now_date between c.start_date and c.end_date
-                    and (case p_day_of_week when 'monday' then c.monday when 'tuesday' then c.tuesday when 'wednesday' then c.wednesday when 'thursday' then c.thursday when 'friday' then c.friday when 'saturday' then c.saturday when 'sunday' then c.sunday end) = '1'
-                )
-                or
-                (
-                    st.arrival_seconds between (p_now_seconds + 86400) and (p_now_seconds + p_lookahead_seconds + 86400)
-                    and p_yesterday_date between c.start_date and c.end_date
-                    and (case p_yesterday_day_of_week when 'monday' then c.monday when 'tuesday' then c.tuesday when 'wednesday' then c.wednesday when 'thursday' then c.thursday when 'friday' then c.friday when 'saturday' then c.saturday when 'sunday' then c.sunday end) = '1'
-                )
-            )
-    ),
-    ranked_departures as (
-        select
-            vd.*,
-            row_number() over (
-                partition by vd.route_short_name, vd.trip_headsign 
-                order by vd.sort_time
-            ) as rn
-        from valid_departures vd
-    )
+  with today_services as (
+    select service_id from active_service_ids(p_now_date, p_day_of_week)
+  ),
+  yesterday_services as (
+    select service_id from active_service_ids(p_yesterday_date, p_yesterday_day_of_week)
+  ),
+  valid_departures as (
     select
-        rd.arrival_time,
-        rd.stop_sequence,
-        rd.trip_id,
-        rd.trip_headsign,
-        rd.route_short_name,
-        rd.agency_id,
-        rd.route_type
-    from ranked_departures rd
-    where rd.rn <= p_max_per_line
-    order by rd.sort_time;
-end;
+      st.arrival_time,
+      st.stop_sequence,
+      t.trip_id,
+      t.trip_headsign,
+      r.route_short_name,
+      r.agency_id,
+      r.route_type::int,
+      case
+        when st.arrival_seconds >= (p_now_seconds + 86400) then st.arrival_seconds - 86400
+        else st.arrival_seconds
+      end as sort_time
+    from stop_times st
+    join trips t  on st.trip_id = t.trip_id
+    join routes r on t.route_id = r.route_id
+    where
+      st.stop_id = p_stop_id
+      and st.arrival_time is not null
+      and r.route_short_name is not null
+      and (
+        (
+          st.arrival_seconds between p_now_seconds and (p_now_seconds + p_lookahead_seconds)
+          and t.service_id in (select service_id from today_services)
+        )
+        or
+        (
+          -- GTFS encodes post-midnight trips as hours >= 24 belonging to the
+          -- previous service day, so these are checked against yesterday.
+          st.arrival_seconds between (p_now_seconds + 86400) and (p_now_seconds + p_lookahead_seconds + 86400)
+          and t.service_id in (select service_id from yesterday_services)
+        )
+      )
+  ),
+  ranked_departures as (
+    select
+      vd.*,
+      row_number() over (
+        partition by vd.route_short_name, vd.trip_headsign
+        order by vd.sort_time
+      ) as rn
+    from valid_departures vd
+  )
+  select
+    rd.arrival_time,
+    rd.stop_sequence,
+    rd.trip_id,
+    rd.trip_headsign,
+    rd.route_short_name,
+    rd.agency_id,
+    rd.route_type
+  from ranked_departures rd
+  where rd.rn <= p_max_per_line
+  order by rd.sort_time;
 $$;
 
 
@@ -523,6 +556,13 @@ ALTER TABLE ONLY public.trips
 
 
 --
+-- Name: calendar_dates_service_date_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX calendar_dates_service_date_idx ON public.calendar_dates USING btree (service_id, date);
+
+
+--
 -- Name: calendar_dates_service_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -886,5 +926,5 @@ ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict UTngiNR3Thuqf60axG9gEpG59BwVYUQ3SNvABGeMCNr6jxcNKq1vHi0WeN9K87K
+\unrestrict kgN5AbKDR7CJTuV5JO7E91yZ4hYiBKwK8DcUwuql2bMMqIodDLt6Nbs64fWtcHy
 
