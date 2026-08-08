@@ -1,37 +1,94 @@
 @import "tailwindcss";
 
-@tailwind base;
+@theme {
+  /* Brand (static across themes) */
+  --color-primary: #1D3A77;
+  --color-accent: #5A70B3;
+  --color-success: #34984F;
+  --color-destructive: #c84949;
 
-@layer base {
-  h1 {
-    @apply text-2xl;
-  }
-  h2 {
-    @apply text-xl;
-  }
-  h3 {
-    @apply text-lg;
-  }
-  a {
-    @apply text-blue-600 underline;
+  /* Semantic (light defaults — overridden in dark media query below) */
+  --color-background: #ffffff;
+  --color-surface: #F8F9FA;
+  --color-foreground: #242424;
+  --color-muted: #665656;
+  --color-border: #C7BCBC;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+
+  /* Font sizes */
+  --text-caption: 0.75rem;
+  --text-header-sm: 1.125rem;
+  --text-header-md: 1.5rem;
+  --text-header-lg: 2rem;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+
+  /* Shadows */
+  --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #121212;
+    --color-surface: #1E1E1E;
+    --color-foreground: #ffffff;
+    --color-muted: #A0A0A0;
+    --color-border: #333333;
   }
 }
 
-@tailwind components;
+/* Base reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-@tailwind utilities;
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
 
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-.neumorphic {
-  background: #E5E5E5;
-  border-radius: 20px;
-  box-shadow: 
-    /* outer light - top left */
-    -12px -12px 18px rgba(255, 255, 255, 0.64),
-    /* outer dark - bottom right */
-    12px 12px 18px rgba(13, 39, 80, 0.20),
-    /* inner light - top left */
-    inset -12px -12px 18px rgba(255, 255, 255, 0.64),
-    /* inner dark - bottom right */
-    inset 12px 12px 18px rgba(13, 39, 80, 0.20);
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  list-style: none;
 }

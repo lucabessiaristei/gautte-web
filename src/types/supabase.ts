@@ -255,6 +255,7 @@ export type Database = {
       }
       stop_times: {
         Row: {
+          arrival_seconds: number | null
           arrival_time: string | null
           departure_time: string | null
           drop_off_type: string | null
@@ -267,6 +268,7 @@ export type Database = {
           trip_id: string | null
         }
         Insert: {
+          arrival_seconds?: number | null
           arrival_time?: string | null
           departure_time?: string | null
           drop_off_type?: string | null
@@ -279,6 +281,7 @@ export type Database = {
           trip_id?: string | null
         }
         Update: {
+          arrival_seconds?: number | null
           arrival_time?: string | null
           departure_time?: string | null
           drop_off_type?: string | null
@@ -558,6 +561,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_departures: {
+        Args: {
+          p_day_of_week: string
+          p_lookahead_seconds: number
+          p_max_per_line?: number
+          p_now_date: string
+          p_now_seconds: number
+          p_stop_id: string
+          p_yesterday_date: string
+          p_yesterday_day_of_week: string
+        }
+        Returns: {
+          agency_id: string
+          arrival_time: string
+          route_short_name: string
+          route_type: number
+          stop_sequence: number
+          trip_headsign: string
+          trip_id: string
+        }[]
+      }
       search_stops: {
         Args: { search_query: string }
         Returns: {
