@@ -19,10 +19,17 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
+# progress-bar on terminal only
+if [ -t 1 ]; then
+  CURL_OUTPUT="--progress-bar"
+else
+  CURL_OUTPUT="--silent"
+fi
+
 echo "Downloading feed"
 # -f fails on HTTP errors (404 etc), -L follows redirects,
 # --retry survives transient network failures.
-curl -fL --retry 3 --retry-delay 5 --progress-bar -o "$WORK/gtfs.zip" "$ZIP_URL"
+curl -fL --retry 3 --retry-delay 5 $CURL_OUTPUT -o "$WORK/gtfs.zip" "$ZIP_URL"
 ls -lh "$WORK/gtfs.zip"
 
 # Change detection: hash the zip and compare with the last successful import.
