@@ -1,4 +1,8 @@
+import { useMemo } from 'react'
 import AsyncSelect from 'react-select/async'
+import { debouncePromise } from '../../../utils/debounce'
+
+const SEARCH_DEBOUNCE_MS = 300
 
 export type StopOption = {
   value: string
@@ -10,13 +14,20 @@ interface StopSearchProps {
   onSelect: (option: StopOption | null) => void
   onMenuOpen?: () => void
   loadOptions: (query: string) => Promise<StopOption[]>
+  defaultOptions?: StopOption[]
 }
 
-function StopSearch({ value, onSelect, onMenuOpen, loadOptions }: StopSearchProps) {
+function StopSearch({ value, onSelect, onMenuOpen, loadOptions, defaultOptions }: StopSearchProps) {
+  const debouncedLoadOptions = useMemo(
+    () => debouncePromise(loadOptions, SEARCH_DEBOUNCE_MS),
+    [loadOptions]
+  )
+
   return (
     <AsyncSelect
       value={value}
-      loadOptions={loadOptions}
+      loadOptions={debouncedLoadOptions}
+      defaultOptions={defaultOptions}
       onChange={onSelect}
       onMenuOpen={onMenuOpen}
       placeholder="Cerca fermata per nome o numero..."
@@ -24,6 +35,11 @@ function StopSearch({ value, onSelect, onMenuOpen, loadOptions }: StopSearchProp
       noOptionsMessage={() => 'Nessuna fermata trovata'}
       loadingMessage={() => 'Ricerca...'}
       unstyled
+      components={{
+        DropdownIndicator: () => null,
+        IndicatorSeparator: () => null,
+        LoadingIndicator: () => null,
+      }}
       styles={{
         control: (_, { isFocused }) => ({
           display: 'flex',
@@ -67,19 +83,6 @@ function StopSearch({ value, onSelect, onMenuOpen, loadOptions }: StopSearchProp
         indicatorsContainer: () => ({
           display: 'flex',
           alignItems: 'center',
-        }),
-        dropdownIndicator: () => ({
-          display: 'flex',
-          alignItems: 'center',
-          color: 'var(--color-muted)',
-          padding: `0 var(--spacing-xs)`,
-          cursor: 'pointer',
-        }),
-        loadingIndicator: () => ({
-          display: 'flex',
-          alignItems: 'center',
-          color: 'var(--color-muted)',
-          padding: `0 var(--spacing-xs)`,
         }),
         menu: (base) => ({
           ...base,
