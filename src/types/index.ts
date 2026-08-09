@@ -3,6 +3,10 @@ export type Departure = {
   realtimeTime: string | null
   delayMin: number | null
   tripId: string
+  // Minutes from the query's reference datetime's midnight to this departure,
+  // already adjusted for GTFS extended-notation (hours >= 24) post-midnight
+  // trips carried over from the previous service day. Always >= 0.
+  scheduledOffsetMinutes: number
 }
 
 export type DepartingLine = {
