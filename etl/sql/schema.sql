@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict kgN5AbKDR7CJTuV5JO7E91yZ4hYiBKwK8DcUwuql2bMMqIodDLt6Nbs64fWtcHy
+\restrict bgnZwwAIGMwtGAudueyACvkYpb7TEawoyZdbaHVUj5um1dgm1LH2COZlHZEFpgX
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -66,10 +66,10 @@ $$;
 
 
 --
--- Name: get_departures(text, integer, integer, text, text, text, text, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_departures(text, integer, text, text, text, text, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_departures(p_stop_id text, p_now_seconds integer, p_lookahead_seconds integer, p_now_date text, p_yesterday_date text, p_day_of_week text, p_yesterday_day_of_week text, p_max_per_line integer DEFAULT 4) RETURNS TABLE(arrival_time text, stop_sequence integer, trip_id text, trip_headsign text, route_short_name text, agency_id text, route_type integer)
+CREATE FUNCTION public.get_departures(p_stop_id text, p_now_seconds integer, p_now_date text, p_yesterday_date text, p_day_of_week text, p_yesterday_day_of_week text, p_max_per_line integer DEFAULT 4) RETURNS TABLE(arrival_time text, stop_sequence integer, trip_id text, trip_headsign text, route_short_name text, agency_id text, route_type integer)
     LANGUAGE sql STABLE
     AS $$
   with today_services as (
@@ -79,7 +79,10 @@ CREATE FUNCTION public.get_departures(p_stop_id text, p_now_seconds integer, p_l
     select service_id from active_service_ids(p_yesterday_date, p_yesterday_day_of_week)
   ),
   valid_departures as (
-    select
+    -- Convoy trips (multiple vehicles leaving together on school routes) are
+    -- separate trip_ids at the same stop and time. GTT's own site shows one
+    -- departure, so keep the lowest trip_id and drop the rest.
+    select distinct on (r.route_short_name, t.trip_headsign, st.arrival_time)
       st.arrival_time,
       st.stop_sequence,
       t.trip_id,
@@ -100,17 +103,19 @@ CREATE FUNCTION public.get_departures(p_stop_id text, p_now_seconds integer, p_l
       and r.route_short_name is not null
       and (
         (
-          st.arrival_seconds between p_now_seconds and (p_now_seconds + p_lookahead_seconds)
+          st.arrival_seconds >= p_now_seconds
+          and st.arrival_seconds < (p_now_seconds + 86400)
           and t.service_id in (select service_id from today_services)
         )
         or
         (
           -- GTFS encodes post-midnight trips as hours >= 24 belonging to the
           -- previous service day, so these are checked against yesterday.
-          st.arrival_seconds between (p_now_seconds + 86400) and (p_now_seconds + p_lookahead_seconds + 86400)
+          st.arrival_seconds >= (p_now_seconds + 86400)
           and t.service_id in (select service_id from yesterday_services)
         )
       )
+    order by r.route_short_name, t.trip_headsign, st.arrival_time, t.trip_id
   ),
   ranked_departures as (
     select
@@ -926,5 +931,5 @@ ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict kgN5AbKDR7CJTuV5JO7E91yZ4hYiBKwK8DcUwuql2bMMqIodDLt6Nbs64fWtcHy
+\unrestrict bgnZwwAIGMwtGAudueyACvkYpb7TEawoyZdbaHVUj5um1dgm1LH2COZlHZEFpgX
 

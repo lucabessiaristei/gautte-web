@@ -10,32 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -167,6 +142,33 @@ export type Database = {
           feed_publisher_url?: string | null
           feed_start_date?: string | null
           feed_version?: string | null
+        }
+        Relationships: []
+      }
+      gtfs_import_log: {
+        Row: {
+          feed_version: string | null
+          finished_at: string | null
+          id: number
+          started_at: string
+          status: string
+          zip_sha256: string
+        }
+        Insert: {
+          feed_version?: string | null
+          finished_at?: string | null
+          id?: never
+          started_at?: string
+          status?: string
+          zip_sha256: string
+        }
+        Update: {
+          feed_version?: string | null
+          finished_at?: string | null
+          id?: never
+          started_at?: string
+          status?: string
+          zip_sha256?: string
         }
         Relationships: []
       }
@@ -561,10 +563,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      active_service_ids: {
+        Args: { p_date: string; p_day_of_week: string }
+        Returns: {
+          service_id: string
+        }[]
+      }
       get_departures: {
         Args: {
           p_day_of_week: string
-          p_lookahead_seconds: number
           p_max_per_line?: number
           p_now_date: string
           p_now_seconds: number
@@ -717,9 +724,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
