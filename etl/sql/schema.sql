@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict bgnZwwAIGMwtGAudueyACvkYpb7TEawoyZdbaHVUj5um1dgm1LH2COZlHZEFpgX
+\restrict XkkBSEuOpcn2Kp3BoIGeeq0gcQADVo2cVLqL5IHQFkXiGuzZV2466q2zbWqjYQ6
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -302,6 +302,35 @@ CREATE TABLE public.feed_info (
 
 
 --
+-- Name: feedback; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.feedback (
+    id bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    note text,
+    app_state jsonb NOT NULL,
+    rpc_payload jsonb,
+    rt_payload jsonb,
+    screenshot_path text
+);
+
+
+--
+-- Name: feedback_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.feedback ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.feedback_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: gtfs_import_log; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -494,6 +523,14 @@ ALTER TABLE ONLY public.agency
 
 ALTER TABLE ONLY public.calendar
     ADD CONSTRAINT calendar_pkey PRIMARY KEY (service_id);
+
+
+--
+-- Name: feedback feedback_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback
+    ADD CONSTRAINT feedback_pkey PRIMARY KEY (id);
 
 
 --
@@ -770,6 +807,19 @@ ALTER TABLE public.calendar_dates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feed_info ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: feedback; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: feedback feedback_anon_insert; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY feedback_anon_insert ON public.feedback FOR INSERT TO anon WITH CHECK (true);
+
+
+--
 -- Name: gtfs_import_log; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -931,5 +981,5 @@ ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict bgnZwwAIGMwtGAudueyACvkYpb7TEawoyZdbaHVUj5um1dgm1LH2COZlHZEFpgX
+\unrestrict XkkBSEuOpcn2Kp3BoIGeeq0gcQADVo2cVLqL5IHQFkXiGuzZV2466q2zbWqjYQ6
 
