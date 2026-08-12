@@ -3,6 +3,7 @@ import MapPage from "@/pages/MapPage";
 import DeparturesPage from "@/pages/DeparturesPage";
 import AboutPage from "@/pages/AboutPage";
 import Nav from "@/components/Nav/Nav";
+import FeedbackWidget from "@/components/FeedbackWidget/FeedbackWidget";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/departures" element={<DeparturesPage />} />
         <Route path="/about" element={<AboutPage />} />
       </Routes>
+      <FeedbackWidget />
     </>
   );
 }

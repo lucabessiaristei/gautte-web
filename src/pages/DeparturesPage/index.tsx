@@ -10,6 +10,7 @@ import StopSearch from "./components/StopSearch";
 import type { StopOption } from "./components/StopSearch";
 import DateTimeSelector from "./components/DateTimeSelector";
 import { filterDepartingLines, BASE_THRESHOLD_MINUTES, THRESHOLD_STEP_MINUTES, MAX_THRESHOLD_MINUTES } from "./utils/filterDepartingLines";
+import { setActiveThreshold } from "../../services/feedbackCapture";
 
 function DeparturesPage() {
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -97,6 +98,10 @@ function DeparturesPage() {
 	const isThresholdExpanded = visibleLines.length > 0 && thresholdMinutes > BASE_THRESHOLD_MINUTES;
 	const canLoadMore = !expandSearch && !isLoading && appliedStop !== null && visibleLines.length === 0 && departingLines.length > 0;
 	const handleLoadMore = () => setExpandSearch(true);
+
+	useEffect(() => {
+		setActiveThreshold(appliedDateTime ? thresholdMinutes : null);
+	}, [appliedDateTime, thresholdMinutes]);
 
 	const gttUrl = useMemo(() => {
 		if (!appliedStop || !appliedDateTime) return null;

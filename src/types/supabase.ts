@@ -145,6 +145,36 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback: {
+        Row: {
+          app_state: Json
+          created_at: string
+          id: number
+          note: string | null
+          rpc_payload: Json | null
+          rt_payload: Json | null
+          screenshot_path: string | null
+        }
+        Insert: {
+          app_state: Json
+          created_at?: string
+          id?: never
+          note?: string | null
+          rpc_payload?: Json | null
+          rt_payload?: Json | null
+          screenshot_path?: string | null
+        }
+        Update: {
+          app_state?: Json
+          created_at?: string
+          id?: never
+          note?: string | null
+          rpc_payload?: Json | null
+          rt_payload?: Json | null
+          screenshot_path?: string | null
+        }
+        Relationships: []
+      }
       gtfs_import_log: {
         Row: {
           feed_version: string | null

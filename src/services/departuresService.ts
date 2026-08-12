@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import type { DayOfWeek, DepartingLine, TripDelays } from '../types/index'
 import { fetchTripUpdates } from './realtimeService'
 import { updateTime, roundTime, parseTimeToSeconds, minutesBetween, REALTIME_WINDOW_MINUTES } from '../utils/timeHelpers'
+import { setLastRpcResult } from './feedbackCapture'
 
 const SECONDS_PER_DAY = 86400
 
@@ -61,6 +62,7 @@ async function fetchDepartures(stopCode: string, referenceDate: Date = new Date(
         : Promise.resolve<TripDelays>(new Map())
 
     console.time('fetchDepartures:getDeparturesRpc')
+    const rpcStartedAt = performance.now()
     const { data: stopTimeData, error: stopTimeError } = await supabase.rpc('get_departures', {
         p_stop_id: stopId,
         p_now_seconds: nowSeconds,
@@ -70,6 +72,7 @@ async function fetchDepartures(stopCode: string, referenceDate: Date = new Date(
         p_yesterday_day_of_week: yesterdayDayOfWeek,
         p_max_per_line: 4,
     })
+    const rpcDurationMs = performance.now() - rpcStartedAt
     console.timeEnd('fetchDepartures:getDeparturesRpc')
 
     console.log('departures:', stopTimeData?.length, stopTimeData)
@@ -80,6 +83,14 @@ async function fetchDepartures(stopCode: string, referenceDate: Date = new Date(
         console.timeEnd('fetchDepartures:total')
         return []
     }
+
+    setLastRpcResult({
+        payload: stopTimeData,
+        stop: { id: stopId, code: stopCode, name: stopData.stop_name },
+        referenceDate,
+        timestamp: Date.now(),
+        durationMs: rpcDurationMs,
+    })
 
     const tripDelays = await realtimePromise
     console.timeEnd('fetchDepartures:fetchTripUpdates')

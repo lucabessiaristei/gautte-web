@@ -1,5 +1,6 @@
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings'
 import type { TripDelays, DelayEntry } from '../types'
+import { setLastRtResult } from './feedbackCapture'
 
 function toSignedInt32(big: bigint): number {
     return Number(BigInt.asIntN(32, big))
@@ -7,6 +8,7 @@ function toSignedInt32(big: bigint): number {
 
 export async function fetchTripUpdates(): Promise<TripDelays> {
     const tripDelays: TripDelays = new Map()
+    const startedAt = performance.now()
 
     try {
 
@@ -42,6 +44,8 @@ export async function fetchTripUpdates(): Promise<TripDelays> {
         console.error('Realtime fetch failed:', error)
     }
         console.log('tripDelays size:', tripDelays.size)
+
+    setLastRtResult({ payload: tripDelays, durationMs: performance.now() - startedAt })
 
     return tripDelays
 }

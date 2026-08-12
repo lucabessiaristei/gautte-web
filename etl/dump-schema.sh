@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 source secret.local/env.sh
 
 pg_dump "$DATABASE_URL" \
-  --schema-only --schema=public --no-owner --no-privileges \
+  --schema-only --schema=public --no-owner \
   -f etl/sql/schema.sql
 
 echo "Schema dumped. Review with: git diff etl/sql/schema.sql"
