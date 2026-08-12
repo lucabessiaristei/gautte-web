@@ -59,7 +59,7 @@ echo "Extracted files:"
 ls -lh *.txt | awk '{print "  " $9 " " $5}'
 
 # COPY assumes UTF-8. A latin-1 feed would silently corrupt accented names.
-ENC="$(file -bI stops.txt)"
+ENC="$(file -b --mime-encoding stops.txt)"
 case "$ENC" in
   *utf-8*|*us-ascii*) ;;
   *) echo "Unexpected encoding: $ENC"; exit 1 ;;
