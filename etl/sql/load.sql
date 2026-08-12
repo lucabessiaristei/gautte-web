@@ -54,7 +54,23 @@ truncate
 \copy public.shapes (shape_id, shape_pt_lat, shape_pt_lon, shape_pt_sequence) from 'shapes.txt' with (format csv, header true, force_null *)
 
 \echo '[10/13] trips'
-\copy public.trips (route_id, service_id, trip_id, trip_headsign, trip_short_name, direction_id, block_id, shape_id, wheelchair_accessible, bikes_allowed, limited_route) from 'trips.txt' with (format csv, header true, force_null *)
+\copy public.trips (route_id, service_id, trip_id, ...) from 'trips.txt' with (format csv, header true, force_null *)
+
+\echo 'Normalizing trip_headsign'
+with cleaned as (
+  select trip_id,
+         btrim(regexp_replace(
+           regexp_replace(
+             regexp_replace(trip_headsign, '\s+', ' ', 'g'),
+             '\s+([,)])', '\1', 'g'),
+           ',\s*$', '')) as normalized
+  from public.trips
+)
+update public.trips t
+set trip_headsign = c.normalized
+from cleaned c
+where t.trip_id = c.trip_id
+  and t.trip_headsign is distinct from c.normalized;
 
 \echo '[11/13] stop_times (largest file)'
 \copy public.stop_times (trip_id, arrival_time, departure_time, stop_id, stop_sequence, stop_headsign, pickup_type, drop_off_type, shape_dist_traveled, timepoint) from 'stop_times.txt' with (format csv, header true, force_null *)
