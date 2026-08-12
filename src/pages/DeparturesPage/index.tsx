@@ -9,7 +9,7 @@ import { getRecentStops, addRecentStop } from "../../utils/stopHistory";
 import StopSearch from "./components/StopSearch";
 import type { StopOption } from "./components/StopSearch";
 import DateTimeSelector from "./components/DateTimeSelector";
-import { filterDepartingLines } from "./utils/filterDepartingLines";
+import { filterDepartingLines, BASE_THRESHOLD_MINUTES, THRESHOLD_STEP_MINUTES, MAX_THRESHOLD_MINUTES } from "./utils/filterDepartingLines";
 
 function DeparturesPage() {
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -23,6 +23,7 @@ function DeparturesPage() {
 	const [departingLines, setDepartingLines] = useState<DepartingLine[]>([]);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [recentStops, setRecentStops] = useState<StopOption[]>(() => getRecentStops());
+	const [expandSearch, setExpandSearch] = useState<boolean>(false);
 
 	const requestIdRef = useRef(0);
 
@@ -35,6 +36,7 @@ function DeparturesPage() {
 		setAppliedStop(stopOption);
 		setAppliedDateTime(date);
 		setIsLoading(true);
+		setExpandSearch(false);
 		setRecentStops(addRecentStop(stopOption));
 
 		const result = await fetchDepartures(stopOption.value, date);
@@ -73,23 +75,28 @@ function DeparturesPage() {
 		resolveAndApply();
 	}, []); // Solo al mount iniziale
 
-  useEffect(() => {
-    if (appliedStop) {
-      document.title = `Fermata ${appliedStop.label}`
-    } else {
-      document.title = 'Prossime partenze'
-    }
-  }, [appliedStop])
+	useEffect(() => {
+		if (appliedStop) {
+			document.title = `Fermata ${appliedStop.label}`;
+		} else {
+			document.title = "Prossime partenze";
+		}
+	}, [appliedStop]);
 
 	const canApply = pendingStop !== null && (pendingStop.value !== appliedStop?.value || appliedDateTime === null || pendingDateTime.getTime() !== appliedDateTime.getTime());
 
 	const isCustomDateTime = appliedDateTime !== null && minutesBetween(appliedDateTime, new Date()) > REALTIME_WINDOW_MINUTES;
 
-	const visibleLines = useMemo(() => {
-		if (!appliedDateTime) return departingLines;
+	const { lines: visibleLines, thresholdMinutes } = useMemo(() => {
+		if (!appliedDateTime) return { lines: departingLines, thresholdMinutes: BASE_THRESHOLD_MINUTES };
 		const referenceOffsetMinutes = appliedDateTime.getHours() * 60 + appliedDateTime.getMinutes();
-		return filterDepartingLines(departingLines, referenceOffsetMinutes).lines;
-	}, [departingLines, appliedDateTime]);
+		const maxThresholdMinutes = expandSearch ? MAX_THRESHOLD_MINUTES : BASE_THRESHOLD_MINUTES + THRESHOLD_STEP_MINUTES;
+		return filterDepartingLines(departingLines, referenceOffsetMinutes, maxThresholdMinutes, expandSearch);
+	}, [departingLines, appliedDateTime, expandSearch]);
+
+	const isThresholdExpanded = visibleLines.length > 0 && thresholdMinutes > BASE_THRESHOLD_MINUTES;
+	const canLoadMore = !expandSearch && !isLoading && appliedStop !== null && visibleLines.length === 0 && departingLines.length > 0;
+	const handleLoadMore = () => setExpandSearch(true);
 
 	const gttUrl = useMemo(() => {
 		if (!appliedStop || !appliedDateTime) return null;
@@ -135,23 +142,28 @@ function DeparturesPage() {
 			<StopSearch value={pendingStop} onSelect={handleStopSelect} onMenuOpen={() => setPendingStop(null)} loadOptions={loadOptions} defaultOptions={recentStops} />
 			<DateTimeSelector value={pendingDateTime} onChange={setPendingDateTime} onSubmit={handleApply} onReset={handleResetToNow} />
 			<div className="flex justify-between">
-			  <button
-  				type="button"
-  				onClick={handleApply}
-  				disabled={!canApply}
-  				className="mt-3 text-caption font-semibold bg-primary text-background px-4 py-2 rounded-md transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed enabled:cursor-pointer enabled:hover:opacity-90 enabled:hover:scale-[1.03] enabled:active:scale-95">
-  				Applica
-  			</button>
-			  {gttUrl && (
-  				<a
-  				href={gttUrl}
-  				target="_blank"
-  				rel="noopener noreferrer"
-  				className="mt-3 text-caption font-semibold bg-primary text-white px-4 py-2 rounded-md transition-all duration-150 cursor-pointer hover:opacity-90 hover:scale-[1.03] active:scale-95 inline-block">
-  				Apri GTT
-  			</a>
-  			  )}
+				<button
+					type="button"
+					onClick={handleApply}
+					disabled={!canApply}
+					className="mt-3 text-caption font-semibold bg-primary text-background px-4 py-2 rounded-md transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed enabled:cursor-pointer enabled:hover:opacity-90 enabled:hover:scale-[1.03] enabled:active:scale-95">
+					Applica
+				</button>
+				{gttUrl && (
+					<a
+						href={gttUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="mt-3 text-caption font-semibold bg-primary text-white px-4 py-2 rounded-md transition-all duration-150 cursor-pointer hover:opacity-90 hover:scale-[1.03] active:scale-95 inline-block">
+						Apri GTT
+					</a>
+				)}
 			</div>
+			{!isLoading && isThresholdExpanded && (
+				<p className="animate-fade-in mt-6 text-caption text-muted bg-background border border-border rounded-md px-3 py-2">
+					Nessuna partenza nelle prossime 4 ore: queste sono le prossime partenze programmate.
+				</p>
+			)}
 			{isLoading ? (
 				<div className="animate-fade-in mt-6 flex items-center gap-2 text-caption text-muted">
 					<span className="inline-block h-4 w-4 rounded-full border-2 border-border border-t-accent animate-spin" />
@@ -192,7 +204,23 @@ function DeparturesPage() {
 					))}
 				</div>
 			) : appliedStop ? (
-				<p className="mt-6 text-caption text-muted">Nessuna partenza trovata</p>
+				canLoadMore ? (
+					<div className="animate-fade-in flex flex-col items-start gap-6">
+						<p className="animate-fade-in mt-6 text-caption text-muted bg-background border border-border rounded-md px-3 py-2">
+							Nessuna partenza nelle prossime {thresholdMinutes / 60} ore
+						</p>
+						<button
+							type="button"
+							onClick={handleLoadMore}
+							className="text-caption font-semibold bg-primary text-background px-4 py-2 rounded-md transition-all duration-150 cursor-pointer hover:opacity-90 hover:scale-[1.03] active:scale-95">
+							Carica altri
+						</button>
+					</div>
+				) : (
+					<p className="animate-fade-in mt-6 text-caption text-muted bg-background border border-border rounded-md px-3 py-2">
+						Nessuna partenza trovata
+					</p>
+				)
 			) : null}
 		</div>
 	);

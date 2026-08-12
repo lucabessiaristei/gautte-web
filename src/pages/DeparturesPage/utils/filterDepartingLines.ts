@@ -1,8 +1,8 @@
 import type { DepartingLine } from '../../../types/index'
 
 export const BASE_THRESHOLD_MINUTES = 120
-const MAX_THRESHOLD_MINUTES = 30 * 60
-const THRESHOLD_STEP_MINUTES = 120
+export const MAX_THRESHOLD_MINUTES = 30 * 60
+export const THRESHOLD_STEP_MINUTES = 120
 
 export interface FilteredDepartingLines {
   lines: DepartingLine[]
@@ -33,21 +33,39 @@ function applyThresholdToDepartures(
 
 // Filters and orders already-fetched lines by their first departure. Lines further
 // than the base threshold from the reference datetime are dropped, progressively
-// widening the window until at least one line qualifies (or giving up and showing
-// everything). Once a threshold admits a line, each line's departures are further
-// trimmed to that same threshold. Pure client-side pass over data already returned
-// by fetchDepartures.
+// widening the window (up to `maxThresholdMinutes`) until at least one line
+// qualifies, then stopping at that nearest cluster. If nothing qualifies within
+// that cap, an empty result is returned unless the cap is the absolute max, in
+// which case it gives up and shows everything. When `expandFully` is set (the
+// user explicitly asked to see more, rather than this widening silently
+// happening), the nearest-cluster short-circuit is skipped and every line within
+// `maxThresholdMinutes` is returned instead of just the first non-empty step.
+// Once a threshold admits a line, each line's departures are further trimmed to
+// that same threshold. Pure client-side pass over data already returned by
+// fetchDepartures.
 export function filterDepartingLines(
   lines: DepartingLine[],
-  referenceOffsetMinutes: number
+  referenceOffsetMinutes: number,
+  maxThresholdMinutes: number = MAX_THRESHOLD_MINUTES,
+  expandFully: boolean = false
 ): FilteredDepartingLines {
   const sorted = [...lines].sort(
     (a, b) => firstDepartureOffset(a) - firstDepartureOffset(b)
   )
 
+  if (expandFully) {
+    const withinThreshold = sorted.filter(
+      (line) => firstDepartureOffset(line) - referenceOffsetMinutes <= maxThresholdMinutes
+    )
+    return {
+      lines: applyThresholdToDepartures(withinThreshold, referenceOffsetMinutes, maxThresholdMinutes),
+      thresholdMinutes: maxThresholdMinutes,
+    }
+  }
+
   for (
     let threshold = BASE_THRESHOLD_MINUTES;
-    threshold <= MAX_THRESHOLD_MINUTES;
+    threshold <= maxThresholdMinutes;
     threshold += THRESHOLD_STEP_MINUTES
   ) {
     const withinThreshold = sorted.filter(
@@ -61,5 +79,8 @@ export function filterDepartingLines(
     }
   }
 
-  return { lines: sorted, thresholdMinutes: MAX_THRESHOLD_MINUTES }
+  if (maxThresholdMinutes >= MAX_THRESHOLD_MINUTES) {
+    return { lines: sorted, thresholdMinutes: MAX_THRESHOLD_MINUTES }
+  }
+  return { lines: [], thresholdMinutes: maxThresholdMinutes }
 }
