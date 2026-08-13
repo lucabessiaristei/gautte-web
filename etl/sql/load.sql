@@ -54,7 +54,7 @@ truncate
 \copy public.shapes (shape_id, shape_pt_lat, shape_pt_lon, shape_pt_sequence) from 'shapes.txt' with (format csv, header true, force_null *)
 
 \echo '[10/13] trips'
-\copy public.trips (route_id, service_id, trip_id, ...) from 'trips.txt' with (format csv, header true, force_null *)
+\copy public.trips (route_id, service_id, trip_id, trip_headsign, trip_short_name, direction_id, block_id, shape_id, wheelchair_accessible, bikes_allowed, limited_route) from 'trips.txt' with (format csv, header true, force_null *)
 
 \echo 'Normalizing trip_headsign'
 with cleaned as (
