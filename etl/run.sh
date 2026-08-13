@@ -9,6 +9,14 @@ ZIP_URL="https://www.gtt.to.it/open_data/gtt_gtfs.zip"
 # regardless of the current working directory it is launched from.
 ETL_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Local dev convenience: load DB credentials if present. Not used in CI, which
+# injects DATABASE_URL directly as a workflow env var from GitHub Secrets.
+if [ -f "$ETL_DIR/../secret.local/.env" ]; then
+  set -a
+  source "$ETL_DIR/../secret.local/.env"
+  set +a
+fi
+
 # Temporary workspace, deleted on exit whether the script succeeds or fails.
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

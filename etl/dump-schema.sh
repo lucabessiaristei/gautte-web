@@ -2,7 +2,9 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-source secret.local/env.sh
+set -a
+source secret.local/.env
+set +a
 
 pg_dump "$DATABASE_URL" \
   --schema-only --schema=public --no-owner \
