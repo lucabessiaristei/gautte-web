@@ -79,7 +79,38 @@ where t.trip_id = c.trip_id
 \copy public.timetables (timetable_id, route_id, direction_id, start_date, end_date, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_time, end_time, timetable_label, service_notes, orientation, timetable_page_id, timetable_sequence, direction_name, include_exceptions, show_trip_continuation) from 'timetables.txt' with (format csv, header true, force_null *)
 
 \echo '[13/13] timetable_stop_order'
-\copy public.timetable_stop_order (timetable_id, stop_id, stop_sequence) from 'timetable_stop_order.txt' with (format csv, header true, force_null *)
+
+-- GTT publishes timetable_stop_order rows referencing stop_ids absent from
+-- stops.txt (dangling references in the source feed). Staging table has no FK,
+-- so the load succeeds and orphans are filtered out explicitly below.
+create temp table tso_raw (
+  timetable_id text,
+  stop_id text,
+  stop_sequence integer
+) on commit drop;
+
+\copy tso_raw (timetable_id, stop_id, stop_sequence) from 'timetable_stop_order.txt' with (format csv, header true, force_null *)
+
+insert into public.timetable_stop_order (timetable_id, stop_id, stop_sequence)
+select r.timetable_id, r.stop_id, r.stop_sequence
+from tso_raw r
+join public.stops s on s.stop_id = r.stop_id;
+
+do $$
+declare dropped bigint;
+begin
+  select count(*) into dropped
+  from tso_raw r
+  where not exists (select 1 from public.stops s where s.stop_id = r.stop_id);
+
+  if dropped > 0 then
+    raise warning 'timetable_stop_order: skipped % orphan rows', dropped;
+  end if;
+
+  if dropped > 100 then
+    raise exception 'too many orphan rows (%), feed likely broken', dropped;
+  end if;
+end $$;
 
 \echo 'Rebuilding indexes'
 create index stop_times_trip_id_idx on public.stop_times using btree (trip_id);
