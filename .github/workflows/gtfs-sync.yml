@@ -2,7 +2,7 @@ name: GTFS sync
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # 02:00 UTC, ~04:00 Europe/Rome in summer
+    - cron: '0 3 * * *'   # 03:00 UTC: GTT publishes ~01:15 UTC, the HA mirror checks hourly
   workflow_dispatch:       # manual trigger
 
 jobs:
