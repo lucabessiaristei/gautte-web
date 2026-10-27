@@ -22,4 +22,5 @@ jobs:
       - name: Run ETL
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          GTFS_MIRROR_URL: https://rgiqoqmdffwtkwagnydf.supabase.co/storage/v1/object/public/gtfs
         run: ./etl/run.sh

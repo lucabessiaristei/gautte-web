@@ -34,10 +34,32 @@ else
   CURL_OUTPUT="--silent"
 fi
 
-echo "Downloading feed"
 # -f fails on HTTP errors (404 etc), -L follows redirects,
 # --retry survives transient network failures.
-curl -fL --retry 3 --retry-delay 5 $CURL_OUTPUT -o "$WORK/gtfs.zip" "$ZIP_URL"
+fetch_zip() {
+  echo "Downloading feed from $1"
+  curl -fL --connect-timeout 20 --max-time 300 --retry 2 --retry-delay 10 \
+    --show-error $CURL_OUTPUT -o "$WORK/gtfs.zip" "$1"
+}
+
+# Since 24 Oct 2026 GTT drops connections from GitHub runner IP ranges. The GTT RT
+# collector add-on on the home server mirrors the zip (byte for byte, so the sha256
+# check below still works) to GTFS_MIRROR_URL, together with a status file it rewrites
+# on every check. A mirror not checked for 48h means the collector is down: try GTT
+# directly, and fall back to the stale copy only if that fails too.
+if [ -n "${GTFS_MIRROR_URL:-}" ]; then
+  MIRROR_AGE_H="$(curl -fsS --max-time 30 "$GTFS_MIRROR_URL/gtt_gtfs.json" \
+    | jq -r '(now - (.checked_at | fromdateiso8601)) / 3600 | floor')" || MIRROR_AGE_H=""
+  if [ -n "$MIRROR_AGE_H" ] && [ "$MIRROR_AGE_H" -le 48 ]; then
+    echo "Mirror last checked ${MIRROR_AGE_H}h ago"
+    fetch_zip "$GTFS_MIRROR_URL/gtt_gtfs.zip"
+  else
+    echo "::warning::GTFS mirror last checked ${MIRROR_AGE_H:-?}h ago, trying GTT directly"
+    fetch_zip "$ZIP_URL" || fetch_zip "$GTFS_MIRROR_URL/gtt_gtfs.zip"
+  fi
+else
+  fetch_zip "$ZIP_URL"
+fi
 ls -lh "$WORK/gtfs.zip"
 
 # Change detection: hash the zip and compare with the last successful import.
